@@ -1,6 +1,5 @@
 const INPUT: &str = include_str!("../inputs/day1.txt");
 
-
 struct Unsafe {
     position: u8
 }
@@ -11,9 +10,10 @@ struct Rotations {
 
 struct Rotation {
     direction: Direction,
-    turns: u8
+    turns: u32
 }
 
+#[derive(PartialEq)]
 enum Direction {
     Left,
     Right
@@ -30,10 +30,12 @@ impl Unsafe {
         let mut landings = 0;
 
         for rotation in rotations.rotations.iter() {
-            self.position = match rotation.direction {
-                Direction::Left => (self.position + 100 - rotation.turns) % 100,
-                Direction::Right => (self.position + rotation.turns) % 100,
-            };
+            let mut pos = self.position as i32;
+            let rot = rotation.turns as i32;
+
+            pos += if rotation.direction == Direction::Left { -rot } else { rot };
+
+            self.position = pos.rem_euclid(100)  as u8;
 
             if self.position == 0 {
                 landings += 1;
@@ -41,6 +43,26 @@ impl Unsafe {
         }
 
         landings
+    }
+
+
+    fn count_zero_slides(&mut self, rotations: &Rotations) -> u64 {
+        let mut slides = 0;
+
+        for rotation in rotations.rotations.iter() {
+            let mut pos = self.position as i32;
+            let rot = rotation.turns as i32;
+
+            pos += if rotation.direction == Direction::Left { -rot } else { rot };
+
+            let loops = (pos / 100).abs() + (if pos <= 0 && self.position != 0 { 1 } else { 0 });
+
+            self.position = pos.rem_euclid(100) as u8;
+
+            slides += loops;
+        }
+
+        slides as u64
     }
 }
 
@@ -53,9 +75,8 @@ impl Rotations {
                 _ => panic!()
             };
             let turns: u32 = line[1..].parse().unwrap();
-            let turns = turns % 100;
 
-            Rotation { direction, turns: turns.try_into().unwrap() }
+            Rotation { direction, turns }
         }).collect();
 
         Self {
@@ -74,7 +95,12 @@ fn part1() {
 }
 
 fn part2() {
-    todo!();
+    let mut safe = Unsafe::new();
+    let rotations = Rotations::parse(INPUT);
+
+    let count = safe.count_zero_slides(&rotations);
+
+    dbg!(count);
 }
 
 fn main() {
@@ -91,10 +117,7 @@ fn main() {
 mod tests {
     use super::*;
 
-    #[test]
-    fn example() {
-        let mut safe = Unsafe::new();
-        let rotations = Rotations::parse("L68
+const EXAMPLE: &str = "L68
 L30
 R48
 L5
@@ -103,8 +126,21 @@ L55
 L1
 L99
 R14
-L82");
+L82";
+
+    #[test]
+    fn example() {
+        let mut safe = Unsafe::new();
+        let rotations = Rotations::parse(EXAMPLE);
 
         assert_eq!(safe.count_zero_landings(&rotations), 3);
+    }
+
+    #[test]
+    fn example_part2() {
+        let mut safe = Unsafe::new();
+        let rotations = Rotations::parse(EXAMPLE);
+
+        assert_eq!(safe.count_zero_slides(&rotations), 6);
     }
 }
