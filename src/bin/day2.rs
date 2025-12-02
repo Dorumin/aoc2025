@@ -40,6 +40,52 @@ impl Elfilter {
 
         invalidsum
     }
+
+    fn repeat_sieve(&self) -> u64 {
+        let mut buf = String::new();
+        let mut invalidsum = 0;
+
+        for range in self.ranges.iter() {
+            'numbers_loop:
+            for n in range.clone() {
+                buf.clear();
+
+                write!(&mut buf, "{n}").unwrap();
+
+                let slice = buf.as_bytes();
+
+                'length_loop:
+                for i in 0..(slice.len() / 2) {
+                    let i = i + 1;
+
+                    if slice.len().is_multiple_of(i) {
+                        // let mid = slice.len() / i;
+                        let mut chunks = slice.chunks_exact(i);
+                        let start = chunks.next().unwrap();
+
+                        for next in chunks {
+                            if next != start {
+                                continue 'length_loop;
+                            }
+                        }
+
+                        invalidsum += n;
+
+                        continue 'numbers_loop;
+                    }
+                }
+                // if buf.len().is_multiple_of(2) {
+                //     let mid = buf.len() / 2;
+
+                //     if buf[..mid] == buf[mid..] {
+                //         invalidsum += n;
+                //     }
+                // }
+            }
+        }
+
+        invalidsum
+    }
 }
 
 fn part1() {
@@ -49,7 +95,9 @@ fn part1() {
 }
 
 fn part2() {
-    todo!();
+    let filter = Elfilter::parse(INPUT);
+
+    dbg!(filter.repeat_sieve());
 }
 
 fn main() {
@@ -75,12 +123,13 @@ mod tests {
     fn example() {
         let filter = Elfilter::parse(EXAMPLE);
 
-        dbg!(filter.simple_sieve());
         assert_eq!(filter.simple_sieve(), 1227775554);
     }
 
     #[test]
     fn example_part2() {
-        // todo!();
+        let filter = Elfilter::parse(EXAMPLE);
+
+        assert_eq!(filter.repeat_sieve(), 4174379265);
     }
 }
