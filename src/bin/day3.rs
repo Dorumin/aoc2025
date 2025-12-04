@@ -1,6 +1,8 @@
-use std::fmt::Write;
+use std::{fmt::Write, sync::atomic::AtomicUsize};
 
 const INPUT: &str = include_str!("../inputs/day3.txt");
+
+static SER_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 struct Lobby {
     banks: Vec<Vec<u8>>
@@ -47,7 +49,7 @@ impl Lobby {
         })
     }
 
-    #[allow(unused, reason = "runs within an order of magnitude of thel lifetime of the universe")]
+    #[allow(unused, reason = "runs within an order of magnitude of the lifetime of the universe")]
     fn joltages_schlonger(&self) -> impl Iterator<Item = u64> {
         const MAX: u64 = 12;
 
@@ -109,18 +111,8 @@ impl Lobby {
     fn joltages_smarter(&self) -> impl Iterator<Item = u64> {
         const MAX: usize = 12;
 
-        fn explore_range(buf: &mut String, ibuf: &mut Vec<usize>, bank: &[u8], start: usize, remaining: usize) -> u64 {
-            if remaining == 0 {
-                buf.clear();
-                ibuf.iter().for_each(|&i| write!(buf, "{}", bank[i]).unwrap());
-
-                // eprintln!("ending {ibuf:?} {buf}");
-
-                return buf.parse().unwrap();
-            }
-
+        fn explore_range(shifty: u64, bank: &[u8], start: usize, remaining: usize) -> u64 {
             // eprintln!("{start} {remaining} {:?}", start..=(bank.len() - remaining));
-
             let max_value = bank[start..=(bank.len() - remaining)].iter().cloned().max().unwrap();
 
             let max_indices = bank.iter().enumerate()
@@ -132,25 +124,26 @@ impl Lobby {
             let mut biggest = 0;
 
             for max_index in max_indices {
-                ibuf.push(max_index);
+                let shiftier = shifty * 10 + bank[max_index] as u64;
 
-                let result = explore_range(buf, ibuf, bank, max_index + 1, remaining - 1);
+                let result = if remaining == 1 {
+                    // SER_COUNT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+
+                    shiftier
+                } else {
+                    explore_range(shiftier, bank, max_index + 1, remaining - 1)
+                };
 
                 if result > biggest {
                     biggest = result;
                 }
-
-                ibuf.pop();
             }
 
             biggest
         }
 
         self.banks.iter().map(|bank| {
-            let mut buf = String::new();
-            let mut ibuf = Vec::new();
-
-            explore_range(&mut buf, &mut ibuf, bank, 0, MAX)
+            explore_range(0, bank, 0, MAX)
         })
     }
 }
@@ -165,6 +158,8 @@ fn part2() {
     let lobby = Lobby::parse(INPUT);
 
     dbg!(lobby.joltages_smarter().sum::<u64>());
+
+    // dbg!(SER_COUNT.load(std::sync::atomic::Ordering::Relaxed));
 }
 
 fn main() {
@@ -191,8 +186,8 @@ mod tests {
     fn example() {
         let lobby = Lobby::parse(EXAMPLE);
 
-        // assert_eq!(lobby.joltages().collect::<Vec<_>>(), vec![98, 89, 78, 92]);
-        // assert_eq!(lobby.joltages().sum::<u32>(), 357);
+        assert_eq!(lobby.joltages().collect::<Vec<_>>(), vec![98, 89, 78, 92]);
+        assert_eq!(lobby.joltages().sum::<u32>(), 357);
     }
 
     #[test]
