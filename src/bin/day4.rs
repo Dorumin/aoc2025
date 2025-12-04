@@ -11,13 +11,11 @@ impl Printing {
         }
     }
 
-    fn count_accessible_rolls(&self) -> u32 {
-        let mut count = 0;
-
+    fn accessible_rolls(&self) -> impl Iterator<Item = (usize, usize)> {
         let height = self.rolls.len() as isize;
         let width = self.rolls[0].len() as isize;
 
-        let adjacents = |x: usize, y: usize| {
+        let adjacents = move |x: usize, y: usize| {
             [(-1, 0), (-1, 1), (0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1)]
                 .into_iter()
                 .filter_map(move |(delta_x, delta_y)| {
@@ -31,19 +29,44 @@ impl Printing {
                 })
         };
 
-        for (y, row) in self.rolls.iter().enumerate() {
-            for (x, is_roll) in row.iter().enumerate() {
+        self.rolls.iter().enumerate().flat_map(move |(y, row)| {
+            row.iter().enumerate().flat_map(move |(x, is_roll)| {
                 if *is_roll {
                     let adjacent_count = adjacents(x, y).filter(|(x, y)| self.rolls[*y][*x]).count();
 
                     if adjacent_count < 4 {
-                        count += 1;
+                        return Some((x, y));
                     }
                 }
+
+                None
+            })
+        })
+    }
+
+    fn count_accessible_rolls(&self) -> u32 {
+        self.accessible_rolls().count() as u32
+    }
+
+    fn remove_cycles_rolls(&mut self) -> u32 {
+        let mut rolls: Vec<_>;
+        let mut removed_count = 0;
+
+        loop {
+            rolls = self.accessible_rolls().collect();
+
+            if rolls.is_empty() {
+                break;
+            }
+
+            removed_count += rolls.len() as u32;
+
+            for (x, y) in rolls {
+                self.rolls[y][x] = false;
             }
         }
 
-        count
+        removed_count
     }
 }
 
@@ -54,7 +77,9 @@ fn part1() {
 }
 
 fn part2() {
-    todo!();
+    let mut printing = Printing::parse(INPUT);
+
+    dbg!(printing.remove_cycles_rolls());
 }
 
 fn main() {
@@ -92,6 +117,8 @@ mod tests {
 
     #[test]
     fn example_part2() {
-        // todo!();
+        let mut printing = Printing::parse(EXAMPLE);
+
+        assert_eq!(printing.remove_cycles_rolls(), 43);
     }
 }
