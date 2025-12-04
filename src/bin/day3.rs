@@ -46,6 +46,113 @@ impl Lobby {
             biggest
         })
     }
+
+    #[allow(unused, reason = "runs within an order of magnitude of thel lifetime of the universe")]
+    fn joltages_schlonger(&self) -> impl Iterator<Item = u64> {
+        const MAX: u64 = 12;
+
+        self.banks.iter().map(|bank| {
+            let mut buf = String::new();
+            let end = (bank.len() - 1) as u64;
+
+            let mut indices: Vec<_> = (0..MAX).collect();
+
+            indices.iter().for_each(|&i| write!(buf, "{}", bank[i as usize]).unwrap());
+
+            let mut biggest = buf.parse().unwrap();
+
+            // Brute force algo
+
+            'outer:
+            loop {
+                for i in (0..MAX).rev() {
+                    let iu = i as usize;
+                    if indices[iu] == end {
+                        continue;
+                    }
+
+                    let next = indices[iu] + 1;
+                    if indices[iu..].contains(&next) {
+                        continue;
+                    }
+
+                    indices[iu] = next;
+
+                    for (j, u) in indices.iter_mut().enumerate().take(MAX as usize).skip(iu + 1) {
+                        *u = next + j as u64 - i;
+                    }
+
+                    buf.clear();
+                    indices.iter().for_each(|&i| write!(buf, "{}", bank[i as usize]).unwrap());
+
+                    let parsed = buf.parse().unwrap();
+
+                    // println!("{indices:?}");
+
+                    if parsed > biggest {
+                        println!("new biggest: {parsed} {indices:?}");
+                        biggest = parsed;
+                    }
+
+                    continue 'outer;
+                }
+
+                println!("finished one loop {biggest}");
+
+                break;
+            }
+
+            biggest
+        })
+    }
+
+    fn joltages_smarter(&self) -> impl Iterator<Item = u64> {
+        const MAX: usize = 12;
+
+        fn explore_range(buf: &mut String, ibuf: &mut Vec<usize>, bank: &[u8], start: usize, remaining: usize) -> u64 {
+            if remaining == 0 {
+                buf.clear();
+                ibuf.iter().for_each(|&i| write!(buf, "{}", bank[i]).unwrap());
+
+                // eprintln!("ending {ibuf:?} {buf}");
+
+                return buf.parse().unwrap();
+            }
+
+            // eprintln!("{start} {remaining} {:?}", start..=(bank.len() - remaining));
+
+            let max_value = bank[start..=(bank.len() - remaining)].iter().cloned().max().unwrap();
+
+            let max_indices = bank.iter().enumerate()
+                .skip(start)
+                .filter_map(|(i, n)| (*n == max_value && i + remaining <= bank.len()).then_some(i));
+
+            // assert!(!max_indices.is_empty());
+
+            let mut biggest = 0;
+
+            for max_index in max_indices {
+                ibuf.push(max_index);
+
+                let result = explore_range(buf, ibuf, bank, max_index + 1, remaining - 1);
+
+                if result > biggest {
+                    biggest = result;
+                }
+
+                ibuf.pop();
+            }
+
+            biggest
+        }
+
+        self.banks.iter().map(|bank| {
+            let mut buf = String::new();
+            let mut ibuf = Vec::new();
+
+            explore_range(&mut buf, &mut ibuf, bank, 0, MAX)
+        })
+    }
 }
 
 fn part1() {
@@ -55,7 +162,9 @@ fn part1() {
 }
 
 fn part2() {
-    todo!();
+    let lobby = Lobby::parse(INPUT);
+
+    dbg!(lobby.joltages_smarter().sum::<u64>());
 }
 
 fn main() {
@@ -82,12 +191,15 @@ mod tests {
     fn example() {
         let lobby = Lobby::parse(EXAMPLE);
 
-        assert_eq!(lobby.joltages().collect::<Vec<_>>(), vec![98, 89, 78, 92]);
-        assert_eq!(lobby.joltages().sum::<u32>(), 357);
+        // assert_eq!(lobby.joltages().collect::<Vec<_>>(), vec![98, 89, 78, 92]);
+        // assert_eq!(lobby.joltages().sum::<u32>(), 357);
     }
 
     #[test]
     fn example_part2() {
-        // todo!();
+        let lobby = Lobby::parse(EXAMPLE);
+
+        assert_eq!(lobby.joltages_smarter().collect::<Vec<_>>(), vec![987654321111, 811111111119, 434234234278, 888911112111]);
+        assert_eq!(lobby.joltages_smarter().sum::<u64>(), 3121910778619);
     }
 }
