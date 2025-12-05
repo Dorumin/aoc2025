@@ -2,6 +2,7 @@ use std::{fmt::Write, sync::atomic::AtomicUsize};
 
 const INPUT: &str = include_str!("../inputs/day3.txt");
 
+#[allow(unused)]
 static SER_COUNT: AtomicUsize = AtomicUsize::new(0);
 
 struct Lobby {
