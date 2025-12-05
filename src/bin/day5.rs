@@ -1,4 +1,4 @@
-use std::ops::RangeInclusive;
+use std::{collections::HashSet, ops::RangeInclusive};
 
 #[allow(unused)]
 const INPUT: &str = include_str!("../inputs/day5.txt");
@@ -37,6 +37,50 @@ impl Cafeteria {
     fn fresh_ingredient_count(&self) -> usize {
         self.ingredients.iter().filter(|ing| self.ranges.iter().any(|range| range.contains(ing))).count()
     }
+
+    fn flatten_ranges(&self) -> HashSet<RangeInclusive<usize>> {
+        let mut flattened_ranges = HashSet::new();
+        let mut edges: Vec<_> = self.ranges.iter()
+            .flat_map(|r| [*r.start(), *r.start() - 1, *r.end() - 1, *r.end()])
+            .collect();
+
+        edges.sort();
+
+        // 1-10
+        // 3-4
+        // -> 1-2, 3-4, 5-10
+        // 10-20
+        // 5-12
+        // -> 5-9, 10-12, 13-20
+        // 1-2
+        // 1-2
+
+        // Actually, I don't know how it works
+
+        for range in &self.ranges {
+            let mut start = *range.start();
+            for edge in edges.iter().cloned() {
+                if range.contains(&edge) && start <= edge {
+                    let flat = start..=edge;
+                    dbg!(&flat);
+                    flattened_ranges.insert(flat);
+                    start = edge + 1;
+                }
+            }
+
+            if start <= *range.end() {
+                flattened_ranges.insert(start..=*range.end());
+            }
+        }
+
+        flattened_ranges
+    }
+
+    fn all_fresh_count(&self) -> usize {
+        let flattened_ranges = self.flatten_ranges();
+
+        flattened_ranges.iter().map(|r| r.end() - r.start() + 1).sum()
+    }
 }
 
 fn part1() {
@@ -46,7 +90,9 @@ fn part1() {
 }
 
 fn part2() {
-    todo!();
+    let cafeteria = Cafeteria::parse(INPUT);
+
+    dbg!(cafeteria.all_fresh_count());
 }
 
 fn main() {
@@ -87,6 +133,10 @@ mod tests {
 
     #[test]
     fn example_part2() {
-        // todo!();
+        let cafeteria = Cafeteria::parse(EXAMPLE);
+
+        dbg!(cafeteria.flatten_ranges());
+
+        assert_eq!(cafeteria.all_fresh_count(), 14);
     }
 }
