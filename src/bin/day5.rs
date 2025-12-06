@@ -62,7 +62,7 @@ impl Cafeteria {
             for edge in edges.iter().cloned() {
                 if range.contains(&edge) && start <= edge {
                     let flat = start..=edge;
-                    dbg!(&flat);
+                    // dbg!(&flat);
                     flattened_ranges.insert(flat);
                     start = edge + 1;
                 }
