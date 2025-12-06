@@ -62,6 +62,27 @@ impl<'a> Cephalopostulate<'a> {
             })
         })
     }
+
+    fn solved_what_the_fuck_is_cephalopod_math(&self) -> impl Iterator<Item = u64> {
+        let length = self.rows[0].len();
+
+        (0..length).flat_map(move |cell_index| {
+            let op = self.rows.last().unwrap()[cell_index].trim();
+            let maxlen = (0..(self.rows.len() - 1)).map(|row_index| self.rows[row_index][cell_index].len()).max().unwrap();
+
+            (0..maxlen).map(move |s_index| {
+                let number = (0..(self.rows.len() - 1)).map(|row_index| {
+                    self.rows[row_index][cell_index].get(s_index..(s_index + 1))
+                }).fold(String::new(), |mut s, c| { c.iter().for_each(|c| s.push_str(c)); s });
+
+                number.trim().parse().unwrap()
+            }).reduce(|acc, num| if op == "*" {
+                acc * num
+            } else {
+                acc + num
+            })
+        })
+    }
 }
 
 fn part1() {
@@ -71,7 +92,9 @@ fn part1() {
 }
 
 fn part2() {
-    todo!();
+    let ceph = Cephalopostulate::parse(INPUT);
+
+    dbg!(ceph.solved_what_the_fuck_is_cephalopod_math().sum::<u64>());
 }
 
 fn main() {
