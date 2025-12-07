@@ -9,7 +9,7 @@ struct TheScientist {
 
 enum Cell {
     Start,
-    Beam,
+    Beam(usize),
     Splitter,
     Free
 }
@@ -18,7 +18,7 @@ impl Cell {
     fn from_char(c: char) -> Self {
         match c {
             'S' => Cell::Start,
-            '|' => Cell::Beam,
+            '|' => Cell::Beam(1),
             '^' => Cell::Splitter,
             '.' => Cell::Free,
             _ => unreachable!()
@@ -28,7 +28,7 @@ impl Cell {
     fn to_char(&self) -> char {
         match self {
             Cell::Start => 'S',
-            Cell::Beam => '|',
+            Cell::Beam(_) => '|',
             Cell::Splitter => '^',
             Cell::Free => '.'
         }
@@ -49,7 +49,7 @@ impl TheScientist {
 
         for (y, row) in self.rows.iter().enumerate() {
             for (x, cell) in row.iter().enumerate() {
-                let raycast = matches!(cell, Cell::Start | Cell::Beam);
+                let raycast = matches!(cell, Cell::Start | Cell::Beam(_));
 
                 if !raycast {
                     continue;
@@ -82,7 +82,7 @@ impl TheScientist {
         for (x, y) in targets {
             if let Some(cell) = self.rows.get_mut(y).and_then(|row| row.get_mut(x))
                 && matches!(cell, Cell::Free) {
-                *cell = Cell::Beam;
+                *cell = Cell::Beam(1);
 
                 sliced += 1;
             }
@@ -105,6 +105,44 @@ impl TheScientist {
         }
 
         splits_total
+    }
+
+    fn quantum_inferiority(&mut self) -> usize {
+        for y in 0..(self.rows.len() - 1) {
+            for x in 0..self.rows[y].len() {
+                let row = &self.rows[y];
+                let cell = &row[x];
+
+                let stax = match cell {
+                    Cell::Start => 1,
+                    Cell::Beam(x) => *x,
+                    _ => continue,
+                };
+
+                let nexts = match self.rows[y + 1][x] {
+                    Cell::Splitter => vec![
+                        (x.checked_sub(1), y + 1),
+                        (x.checked_add(1), y + 1)
+                    ],
+                    Cell::Free | Cell::Beam(_) => vec![
+                        (Some(x), y + 1)
+                    ],
+                    _ => unreachable!()
+                };
+
+                for next in nexts {
+                    if let (Some(x), y) = next {
+                        match &mut self.rows[y][x] {
+                            Cell::Beam(stacks) => *stacks += stax,
+                            cell @ Cell::Free  => *cell = Cell::Beam(stax),
+                            _ => unreachable!()
+                        }
+                    }
+                }
+            }
+        }
+
+        self.rows.last().unwrap().iter().fold(0, |sum, cell| if let Cell::Beam(x) = cell { sum + x } else { sum })
     }
 }
 
@@ -129,7 +167,9 @@ fn part1() {
 }
 
 fn part2() {
-    todo!();
+    let mut scientist = TheScientist::parse(INPUT);
+
+    dbg!(scientist.quantum_inferiority());
 }
 
 fn main() {
@@ -188,6 +228,8 @@ mod tests {
 
     #[test]
     fn example_part2() {
-        // todo!();
+        let mut scientist = TheScientist::parse(EXAMPLE);
+
+        assert_eq!(scientist.quantum_inferiority(), 40);
     }
 }
