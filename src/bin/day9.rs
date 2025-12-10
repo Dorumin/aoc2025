@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::{Debug, Display, Write}, io::BufWriter};
+use std::{collections::HashSet, fmt::{Debug, Display, Write}, io::BufWriter, time::Instant};
 use std::io::Write as _;
 
 #[allow(unused)]
@@ -7,6 +7,8 @@ const INPUT: &str = include_str!("../inputs/day9.txt");
 struct BijouTheater {
     red_tiles: Vec<(u32, u32)>,
     set: HashSet<(u32, u32)>,
+    yedges: HashSet<u32>,
+    xedges: HashSet<u32>,
     max: (u32, u32)
 }
 
@@ -17,6 +19,7 @@ fn pairs_looping<T: Clone>(ring: &[T]) -> impl Iterator<Item = (&T, &T)> {
 }
 
 fn rect_size(a: (u32, u32), b: (u32, u32)) -> u64 {
+    // These rectangles are inclusive ranges
     (a.0.abs_diff(b.0) as u64 + 1) * (a.1.abs_diff(b.1) as u64 + 1)
 }
 
@@ -50,9 +53,14 @@ impl BijouTheater {
 
         assert_closed_loop(&red_tiles);
 
+        let xedges = HashSet::from_iter(red_tiles.iter().map(|p| p.0));
+        let yedges = HashSet::from_iter(red_tiles.iter().map(|p| p.1));
+
         Self {
             red_tiles,
             set,
+            xedges,
+            yedges,
             max: (max_x, max_y)
         }
     }
@@ -147,6 +155,22 @@ impl BijouTheater {
         largest
     }
 
+    fn try_all_rectangles_filled_with_suspicious_fluids_less_stupid(&self) -> u64 {
+        let mut largest = 0;
+
+        let pair_count = self.all_pairs().count();
+
+        for (index, (a, b)) in self.all_pairs().enumerate() {
+            let size = rect_size(a, b);
+
+            if size > largest && self.rectangle_is_safe_less_stupid(a, b, index, pair_count) {
+                largest = size;
+            }
+        }
+
+        largest
+    }
+
     fn rectangle_is_safe(&self, a: (u32, u32), b: (u32, u32), index: usize, count: usize) -> bool {
         let doru_asked_eric_about_these_and_found_out_theyre_wrong = [
             2785979082u64,
@@ -164,7 +188,7 @@ impl BijouTheater {
             return false;
         }
 
-        if size < 5000000 {
+        if size < 50000 {
             for x in xrange.clone() {
                 for y in yrange.clone() {
                     if !self.point_in_loop((x, y)) {
@@ -173,11 +197,38 @@ impl BijouTheater {
                 }
             }
         } else {
-            for _ in 0..5000000 {
+            for _ in 0..50000 {
                 let x = rand::random_range(xrange.clone());
                 let y = rand::random_range(yrange.clone());
 
                 if !self.point_in_loop((x, y)) {
+                    return false;
+                }
+            }
+        }
+
+        eprintln!("improvement! {size} ({index} out of {count})");
+
+        true
+    }
+
+    fn rectangle_is_safe_less_stupid(&self, a: (u32, u32), b: (u32, u32), index: usize, count: usize) -> bool {
+        let xrange = (a.0.min(b.0))..=(a.0.max(b.0));
+        let yrange = (a.1.min(b.1))..=(a.1.max(b.1));
+
+        let size = rect_size(a, b);
+
+        for &xedge in self.xedges.iter() {
+            if !xrange.contains(&xedge) {
+                continue;
+            }
+
+            for &yedge in self.yedges.iter() {
+                if !yrange.contains(&yedge) {
+                    continue;
+                }
+
+                if !self.point_in_loop((xedge, yedge)) {
                     return false;
                 }
             }
@@ -250,7 +301,21 @@ fn part1() {
 fn part2() {
     let theater = BijouTheater::parse(INPUT);
 
-    dbg!(theater.try_all_rectangles_filled_with_suspicious_fluids());
+    let mut start = Instant::now();
+    let a = theater.try_all_rectangles_filled_with_suspicious_fluids();
+    let time_a = start.elapsed();
+    dbg!(a);
+
+    start = Instant::now();
+    let b = theater.try_all_rectangles_filled_with_suspicious_fluids();
+    let time_b = start.elapsed();
+    assert_eq!(a, b, "You got unlucky");
+
+    start = Instant::now();
+    assert_eq!(theater.try_all_rectangles_filled_with_suspicious_fluids_less_stupid(), a);
+    let time_c = start.elapsed();
+
+    println!("All good; a took {time_a:?}, b took {time_b:?}, c took {time_c:?}");
 }
 
 fn main() {
