@@ -341,7 +341,7 @@ impl Machine {
         let mut problem = vars.minimise(x.iter().sum::<Expression>()).using(default_solver);
 
         for i in 0..n {
-            let mut lhs: Expression = 0.into();
+            let mut lhs = Expression::from(0);
 
             for (button, var) in self.buttons.iter().zip(&x) {
                 if button.contains(&i) {
@@ -349,6 +349,7 @@ impl Machine {
                 }
             }
 
+            // note: might need to use epsilon distance because of f64 limitation; worked on my input
             problem = problem.with(lhs.eq(self.joltage_requirements[i] as f64));
         }
 
