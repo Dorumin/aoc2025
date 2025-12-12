@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.100"
+cached = "0.56.0"
 good_lp = { version = "1.14.2", features = ["microlp"], default-features = false }
 pathfinding = "4.14.0"
 rand = "0.9.2"
